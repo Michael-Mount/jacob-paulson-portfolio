@@ -1,0 +1,286 @@
+//NextResponse is automatic JSON.stringify
+import { NextResponse } from "next/server";
+//CreateRequire is used for nodes way of using require on commin Js Packages
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const spotifyPreviewFinder = require("spotify-preview-finder");
+
+//Caching token to avoid calling for new token on every call to api
+let cachedToken = null;
+let cachedTokenExpiresAt = 0;
+
+//Constant Varibales
+const PLAYLIST_ID = "6ae6o6YL70bK2smWHo8TNr";
+const MARKET = "US";
+const LIMIT = 45;
+const PREVIEW_OVERRIDE = {
+  "0ZEEYmIXuA9WVl9eDvvtjA":
+    "https://p.scdn.co/mp3-preview/3c63a4812fc211120b4a47b5356c53d37049116b",
+  "4zYzLmipUl04vEhSJqXB7v":
+    "https://p.scdn.co/mp3-preview/bc31870f14686065cd320d16bb75c815d3e31396",
+  "71vhQAgQtgeZVe0yILrUSg":
+    "https://p.scdn.co/mp3-preview/c7dedfad455ba5cdd65585452a7bc083f1e61004",
+};
+
+//Builds the base64 string for api endpoint
+function basicAuth(clientId, clientSecret) {
+  //buffer turns into bytes
+  return Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+}
+
+async function getAccessToken() {
+  const now = Date.now(); //current time in mill
+  //checks to see if now is before the token experiration time
+  if (cachedToken && now < cachedTokenExpiresAt) return cachedToken;
+
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+  //fail test if env aren't passed properly
+  if (!clientId || !clientSecret) {
+    throw new Error("Missing Spotify env vars.");
+  }
+
+  //calls spotify token endpoint
+  const res = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${basicAuth(clientId, clientSecret)}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ grant_type: "client_credentials" }),
+  });
+
+  //grabs failed error if can't get the token
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Token request failed: ${res.status} ${text}`);
+  }
+
+  //Newly gernerated token
+  const data = await res.json();
+  cachedToken = data.access_token;
+  cachedTokenExpiresAt = Date.now() + (data.expires_in - 30) * 1000;
+  return cachedToken;
+}
+
+//Make authenticated Spotify GET, checks for errors thrown
+async function spotifyGet(token, url) {
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Spotify API failed: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+//builds the url for querying
+async function getPlaylistMeta(token, playlistId, market) {
+  const url = new URL(`https://api.spotify.com/v1/playlists/${playlistId}`);
+  url.searchParams.set("market", market);
+  url.searchParams.set("fields", "id,name,images,external_urls.spotify");
+  console.log("Got data");
+  return spotifyGet(token, url.toString()); //url.toString converts obj to string
+}
+
+//gets tracks in playlist
+async function getPlaylistItems(
+  token,
+  playlistId,
+  market,
+  limit = 45,
+  offset = 0
+) {
+  const url = new URL(
+    `https://api.spotify.com/v1/playlists/${playlistId}/tracks`
+  );
+  url.searchParams.set("market", market);
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("offset", String(offset));
+  url.searchParams.set("additional_types", "track");
+
+  url.searchParams.set(
+    "fields",
+    "items(track(id,name,preview_url,duration_ms,explicit,external_urls.spotify,artists(id,name),album(id,name,images,external_urls.spotify))),total"
+  );
+
+  return spotifyGet(token, url.toString());
+}
+
+//Reorganizing the data given back for frontend use
+function normalizePlaylistItems(items) {
+  return items
+    .map((it) => it.track)
+    .filter(Boolean)
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      preview_url: t.preview_url,
+
+      preview_urls: t.preview_url ? [t.preview_url] : [],
+
+      duration_ms: t.duration_ms,
+      explicit: t.explicit,
+      external_url: t.external_urls?.spotify,
+      artists: (t.artists || []).map((a) => ({ id: a.id, name: a.name })),
+      album: {
+        id: t.album?.id,
+        name: t.album?.name,
+        images: t.album?.images || [],
+        external_url: t.album?.external_urls?.spotify,
+      },
+    }));
+}
+
+//Maps an asynce functino over a list, but only on a certain amount each time (I DONT UNDERSTAND SAW IT IN A YOUTUBE TUTORIAL AND IT WORKS AND THATS FINE BY ME)
+async function mapLimit(list, limit, mapper) {
+  const results = new Array(list.length);
+  let i = 0;
+
+  async function worker() {
+    while (true) {
+      const idx = i++;
+      if (idx >= list.length) return;
+      results[idx] = await mapper(list[idx], idx);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, list.length) }, worker);
+  await Promise.all(workers);
+  return results;
+}
+
+//fixes missing preview_links
+async function batchSearch(tracks) {
+  const cache = new Map();
+
+  // adds the tracks that are missing a preview_link
+  const toFill = tracks.filter((t) => !t.preview_url);
+  if (toFill.length === 0) return tracks;
+
+  const CONCURRENCY = 5;
+
+  // for each track (5 at a time) search for the missing preview_URL
+  const enriched = await mapLimit(toFill, CONCURRENCY, async (t) => {
+    const artist = t.artists?.[0]?.name || "";
+    const key = `${t.name}::${artist}`.toLowerCase();
+
+    if (cache.has(key)) {
+      return { ...t, ...cache.get(key) };
+    }
+
+    try {
+      const found = artist
+        ? await spotifyPreviewFinder(t.name, artist, 1)
+        : await spotifyPreviewFinder(t.name, 1);
+
+      if (!found?.success) {
+        console.log("[preview-finder] search failed", {
+          track: t.name,
+          artist,
+          // these may or may not exist depending on the package version
+          error: found?.error,
+          message: found?.message,
+          status: found?.status,
+          searchQuery: found?.searchQuery,
+        });
+      }
+
+      const first = found?.success ? found.results?.[0] : null;
+      const previewUrls = first?.previewUrls || [];
+
+      if (found?.success && previewUrls.length === 0) {
+        console.log("[preview-finder] success but no previewUrls", {
+          track: t.name,
+          artist,
+          topResult: first
+            ? {
+                name: first?.name,
+                artist: first?.artist,
+                spotifyUrl: first?.spotifyUrl,
+              }
+            : null,
+        });
+      }
+
+      // "patch the missing preview_URL to the track"
+      const patch = {
+        preview_urls: previewUrls,
+        preview_url: t.preview_url || previewUrls[0] || null,
+        preview_source: previewUrls[0] ? "spotify-preview-finder" : null,
+      };
+
+      cache.set(key, patch);
+      return { ...t, ...patch };
+    } catch (e) {
+      console.log("[preview-finder] exception", {
+        track: t.name,
+        artist,
+        message: e?.message,
+      });
+
+      const patch = {
+        preview_urls: [],
+        preview_url: null,
+        preview_source: null,
+      };
+      cache.set(key, patch);
+      return { ...t, ...patch };
+    }
+  });
+
+  const byId = new Map(enriched.map((t) => [t.id, t]));
+  return tracks.map((t) => byId.get(t.id) || t);
+}
+
+//The actual Get Request when front end call this route
+export async function GET() {
+  try {
+    //Get spotify Token
+    const token = await getAccessToken();
+
+    //Fetch the actual playlist data
+    const meta = await getPlaylistMeta(token, PLAYLIST_ID, MARKET);
+    const page = await getPlaylistItems(token, PLAYLIST_ID, MARKET, LIMIT, 0);
+
+    //Organize the Data for frontend
+    let tracks = normalizePlaylistItems(page.items || []);
+
+    //Override Broken Preview Url
+    tracks = tracks.map((t) => {
+      const overrideUrl = PREVIEW_OVERRIDE[t.id];
+      if (!overrideUrl) return t;
+
+      return {
+        ...t,
+        preview_url: overrideUrl,
+        preview_urls: [overrideUrl],
+        preview_source: "manual-override",
+      };
+    });
+
+    //Add the lost preview_URLS
+    tracks = await batchSearch(tracks);
+
+    //Send the data back to front
+    return NextResponse.json({
+      playlist: {
+        id: meta.id,
+        name: meta.name,
+        images: meta.images || [],
+        external_url: meta.external_urls?.spotify,
+      },
+      market: MARKET,
+      total: page.total,
+      tracks,
+    });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err.message || "Unknown error" },
+      { status: 500 }
+    );
+  }
+}
