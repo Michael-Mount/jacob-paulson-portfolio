@@ -213,7 +213,9 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
                     src={album.coverUrl}
                     alt={album.name}
                     draggable={false}
-                    className="object-cover w-[200px] h-[200px] md:w-[280px] md:h-[280px]"
+                    loading="lazy"
+                    decoding="async"
+                    className="object-cover w-50 h-50 md:w-70 md:h-70"
                   />
                 </div>
               </div>

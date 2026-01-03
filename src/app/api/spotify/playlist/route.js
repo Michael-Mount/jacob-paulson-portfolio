@@ -1,10 +1,5 @@
 //NextResponse is automatic JSON.stringify
 import { NextResponse } from "next/server";
-//CreateRequire is used for nodes way of using require on commin Js Packages
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-const spotifyPreviewFinder = require("spotify-preview-finder");
 
 //Caching token to avoid calling for new token on every call to api
 let cachedToken = null;
@@ -13,7 +8,10 @@ let cachedTokenExpiresAt = 0;
 //Constant Varibales
 const PLAYLIST_ID = "6ae6o6YL70bK2smWHo8TNr";
 const MARKET = "US";
-const LIMIT = 45;
+
+// NOTE: We no longer hard-code LIMIT here because we support progressive loading via ?limit=&offset=
+const DEFAULT_LIMIT = 15;
+
 const PREVIEW_OVERRIDE = {
   "0ZEEYmIXuA9WVl9eDvvtjA":
     "https://p.scdn.co/mp3-preview/3c63a4812fc211120b4a47b5356c53d37049116b",
@@ -135,116 +133,29 @@ function normalizePlaylistItems(items) {
     }));
 }
 
-//Maps an asynce functino over a list, but only on a certain amount each time (I DONT UNDERSTAND SAW IT IN A YOUTUBE TUTORIAL AND IT WORKS AND THATS FINE BY ME)
-async function mapLimit(list, limit, mapper) {
-  const results = new Array(list.length);
-  let i = 0;
-
-  async function worker() {
-    while (true) {
-      const idx = i++;
-      if (idx >= list.length) return;
-      results[idx] = await mapper(list[idx], idx);
-    }
-  }
-
-  const workers = Array.from({ length: Math.min(limit, list.length) }, worker);
-  await Promise.all(workers);
-  return results;
-}
-
-//fixes missing preview_links
-async function batchSearch(tracks) {
-  const cache = new Map();
-
-  // adds the tracks that are missing a preview_link
-  const toFill = tracks.filter((t) => !t.preview_url);
-  if (toFill.length === 0) return tracks;
-
-  const CONCURRENCY = 5;
-
-  // for each track (5 at a time) search for the missing preview_URL
-  const enriched = await mapLimit(toFill, CONCURRENCY, async (t) => {
-    const artist = t.artists?.[0]?.name || "";
-    const key = `${t.name}::${artist}`.toLowerCase();
-
-    if (cache.has(key)) {
-      return { ...t, ...cache.get(key) };
-    }
-
-    try {
-      const found = artist
-        ? await spotifyPreviewFinder(t.name, artist, 1)
-        : await spotifyPreviewFinder(t.name, 1);
-
-      if (!found?.success) {
-        console.log("[preview-finder] search failed", {
-          track: t.name,
-          artist,
-          // these may or may not exist depending on the package version
-          error: found?.error,
-          message: found?.message,
-          status: found?.status,
-          searchQuery: found?.searchQuery,
-        });
-      }
-
-      const first = found?.success ? found.results?.[0] : null;
-      const previewUrls = first?.previewUrls || [];
-
-      if (found?.success && previewUrls.length === 0) {
-        console.log("[preview-finder] success but no previewUrls", {
-          track: t.name,
-          artist,
-          topResult: first
-            ? {
-                name: first?.name,
-                artist: first?.artist,
-                spotifyUrl: first?.spotifyUrl,
-              }
-            : null,
-        });
-      }
-
-      // "patch the missing preview_URL to the track"
-      const patch = {
-        preview_urls: previewUrls,
-        preview_url: t.preview_url || previewUrls[0] || null,
-        preview_source: previewUrls[0] ? "spotify-preview-finder" : null,
-      };
-
-      cache.set(key, patch);
-      return { ...t, ...patch };
-    } catch (e) {
-      console.log("[preview-finder] exception", {
-        track: t.name,
-        artist,
-        message: e?.message,
-      });
-
-      const patch = {
-        preview_urls: [],
-        preview_url: null,
-        preview_source: null,
-      };
-      cache.set(key, patch);
-      return { ...t, ...patch };
-    }
-  });
-
-  const byId = new Map(enriched.map((t) => [t.id, t]));
-  return tracks.map((t) => byId.get(t.id) || t);
-}
-
 //The actual Get Request when front end call this route
-export async function GET() {
+export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+
+    const limit = Math.max(
+      1,
+      Math.min(50, Number(searchParams.get("limit") || DEFAULT_LIMIT))
+    );
+    const offset = Math.max(0, Number(searchParams.get("offset") || 0));
+
     //Get spotify Token
     const token = await getAccessToken();
 
     //Fetch the actual playlist data
     const meta = await getPlaylistMeta(token, PLAYLIST_ID, MARKET);
-    const page = await getPlaylistItems(token, PLAYLIST_ID, MARKET, LIMIT, 0);
+    const page = await getPlaylistItems(
+      token,
+      PLAYLIST_ID,
+      MARKET,
+      limit,
+      offset
+    );
 
     //Organize the Data for frontend
     let tracks = normalizePlaylistItems(page.items || []);
@@ -262,9 +173,6 @@ export async function GET() {
       };
     });
 
-    //Add the lost preview_URLS
-    tracks = await batchSearch(tracks);
-
     //Send the data back to front
     return NextResponse.json({
       playlist: {
@@ -276,6 +184,10 @@ export async function GET() {
       market: MARKET,
       total: page.total,
       tracks,
+      offset,
+      limit,
+      hasMore: offset + limit < page.total,
+      nextOffset: offset + limit,
     });
   } catch (err) {
     return NextResponse.json(

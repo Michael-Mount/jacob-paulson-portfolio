@@ -70,6 +70,14 @@ export default function StickyPlayerBar({
               {track?.artists?.map((a) => a.name).join(", ")}{" "}
               {track?.album?.name ? `• ${track.album.name}` : ""}
             </p>
+
+            {/* ✅ Progressive status */}
+            {!canPlay && track?.preview_state === "pending" && (
+              <p className="text-xs text-amber-200/80 mt-1">Loading preview…</p>
+            )}
+            {!canPlay && track?.preview_state === "none" && (
+              <p className="text-xs text-white/40 mt-1">No preview available</p>
+            )}
           </div>
 
           {/* Controls */}

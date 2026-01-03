@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CoverFlow from "./CoverFlow";
 import AlbumDetails from "./AlbumDetails";
 import StickyPlayerBar from "./StickyPlayerBar";
+import FullscreenLoader from "./FullscreenLoader";
 
 const ALBUM_NOTES = {
   "57hiUYCGPNOdvxyzpBKpwk": {
@@ -40,12 +41,17 @@ function buildAlbumsFromTracks(tracks) {
   return Array.from(map.values());
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export default function PlaylistPlayer() {
   const [loading, setLoading] = useState(true);
   const [playlist, setPlaylist] = useState(null);
   const [tracks, setTracks] = useState([]);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [showLoader, setShowLoader] = useState(true);
   const [error, setError] = useState("");
 
   const [activeAlbumIndex, setActiveAlbumIndex] = useState(0);
@@ -62,7 +68,10 @@ export default function PlaylistPlayer() {
   const albumTracks = activeAlbum?.tracks || [];
   const activeTrack = albumTracks[activeTrackIndex];
 
-  const canPlay = Boolean(activeTrack?.preview_url);
+  const canPlay =
+    activeTrack?.preview_state === "ready" && Boolean(activeTrack?.preview_url);
+
+  const initialReady = !loading && !error && albums.length > 0;
 
   const play = async () => {
     const audio = audioRef.current;
@@ -125,14 +134,21 @@ export default function PlaylistPlayer() {
       setError("");
 
       try {
-        const res = await fetch("/api/spotify/playlist");
+        const res = await fetch("/api/spotify/playlist?limit=45&offset=0");
         const data = await res.json();
 
         if (!res.ok) throw new Error(data?.error || "Failed to load playlist.");
 
         if (!cancelled) {
           setPlaylist(data.playlist);
-          setTracks(data.tracks || []);
+
+          setTracks(
+            (data.tracks || []).map((t) => ({
+              ...t,
+              preview_state: t.preview_url ? "ready" : "pending",
+            }))
+          );
+
           setActiveAlbumIndex(0);
           setActiveTrackIndex(0);
         }
@@ -149,11 +165,13 @@ export default function PlaylistPlayer() {
     };
   }, []);
 
+  // Volume (only need this once)
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) audio.volume = volume;
   }, [volume]);
 
+  // Load/Play active track
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -203,13 +221,123 @@ export default function PlaylistPlayer() {
     };
   }, []);
 
+  const tracksRef = useRef([]);
+  const enrichingRef = useRef(false);
+
   useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) audio.volume = volume;
-  }, [volume]);
+    tracksRef.current = tracks;
+  }, [tracks]);
+
+  useEffect(() => {
+    if (!tracks.length) return;
+    if (enrichingRef.current) return;
+
+    enrichingRef.current = true;
+    const controller = new AbortController();
+
+    async function enrichLoop() {
+      try {
+        while (!controller.signal.aborted) {
+          // Only enrich missing previews that are still "pending"
+          const current = tracksRef.current;
+
+          const missing = current
+            .filter((t) => t.preview_state === "pending")
+            .slice(0, 8);
+
+          if (missing.length === 0) return;
+
+          const payload = {
+            tracks: missing.map((t) => ({
+              id: t.id,
+              name: t.name,
+              artist: t.artists?.[0]?.name || "",
+            })),
+          };
+
+          const res = await fetch("/api/spotify/previews", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            // if the endpoint fails, don't hammer it
+            await sleep(1000);
+            continue;
+          }
+
+          const map = await res.json();
+
+          setTracks((prev) =>
+            prev.map((t) => {
+              // only touch tracks returned by the map
+              if (!(t.id in map)) return t;
+
+              const url = map[t.id];
+
+              if (url) {
+                return {
+                  ...t,
+                  preview_url: url,
+                  preview_urls: t.preview_urls?.length ? t.preview_urls : [url],
+                  preview_source: "spotify-preview-finder",
+                  preview_state: "ready",
+                };
+              }
+
+              // if null, we tried and found no preview
+              return {
+                ...t,
+                preview_state: "none",
+              };
+            })
+          );
+
+          // Give UI/network breathing room
+          await sleep(400);
+        }
+      } finally {
+        enrichingRef.current = false;
+      }
+    }
+
+    enrichLoop();
+
+    return () => {
+      controller.abort();
+      enrichingRef.current = false;
+    };
+  }, [tracks.length]);
+
+  useEffect(() => {
+    if (!initialReady) return;
+
+    // Wait until React commits the UI, then wait 1 more frame so the browser paints it
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => {
+        setShowLoader(false);
+      });
+      // cleanup inner raf
+      return () => cancelAnimationFrame(raf2);
+    });
+
+    return () => cancelAnimationFrame(raf1);
+  }, [initialReady]);
+
+  useEffect(() => {
+    if (!showLoader) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showLoader]);
 
   return (
     <section className="p-6 text-white">
+      {showLoader && <FullscreenLoader text="Loading..." />}
       <audio ref={audioRef} />
 
       {/* Cover Flow */}

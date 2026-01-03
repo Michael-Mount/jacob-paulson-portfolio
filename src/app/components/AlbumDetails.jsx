@@ -85,9 +85,16 @@ export default function AlbumDetails({
                         {t.artists?.map((a) => a.name).join(", ")}
                       </p>
 
-                      {!t.preview_url && (
+                      {/* ✅ Progressive status */}
+                      {t.preview_state === "pending" && (
                         <p className="text-xs text-amber-200/80 mt-2">
-                          No Previe Available
+                          Finding preview…
+                        </p>
+                      )}
+
+                      {t.preview_state === "none" && (
+                        <p className="text-xs text-white/40 mt-2">
+                          No preview available
                         </p>
                       )}
                     </button>

@@ -1,7 +1,13 @@
 @import "tailwindcss";
+
 @theme {
   --color-background: #ff6f03;
   --color-secondary: #ffffff;
+  --font-sans: var(--font-league), ui-sans-serif, system-ui, sans-serif;
+}
+
+@utility font-league {
+  font-family: var(--font-league), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
