@@ -8,8 +8,63 @@ import FullscreenLoader from "./FullscreenLoader";
 
 const ALBUM_NOTES = {
   "57hiUYCGPNOdvxyzpBKpwk": {
-    title: "music, mastering, artist",
-    text: "Corn on my cob",
+    title: "Songwriter, Performer, Producer, Recording and Mixing Engineer",
+    text: " ",
+  },
+  "5k6CjxeT6iHb8q7Hw7jMqY": {
+    title:
+      "Songwriter, Performer, Producer, Recording, Mixing, and Mastering Engineer",
+    text: " ",
+  },
+  "4QIYgZzM8VqAIwJyeltmnV": {
+    title:
+      "Songwriter, Performer, Producer, Recording, Mixing, and Mastering Engineer",
+    text: " ",
+  },
+  "3Cl64YbZuvJawGQlDrQwPA": {
+    title:
+      "Songwriter, Performer, Producer, Recording, Mixing, and Mastering Engineer",
+    text: " ",
+  },
+  "7nZ2iw6SYV3XeFG2p6WSXW": {
+    title:
+      "Songwriter, Performer, Producer, Recording, Mixing, and Mastering Engineer",
+    text: " ",
+  },
+  "1x5n9xlf2GH6J97Gv2iQdy": {
+    title:
+      "Songwriter, Performer, Producer, Recording, Mixing, and Mastering Engineer",
+    text: " ",
+  },
+  "0szjaQJo8aKpvbxOeqAzqW": {
+    title:
+      "Songwriter, Performer, Producer, Recording, Mixing, and Mastering Engineer",
+    text: " ",
+  },
+  "0DIiOSogx0Wl8rOetcftLm": {
+    title:
+      "Songwriter, Performer, Producer, Recording, Mixing, and Mastering Engineer",
+    text: " ",
+  },
+  "1qatHyQA4O83z6l9PUX0Io": {
+    title: "Mixing and Mastering Engineer",
+    text: " ",
+  },
+  "3YHiHpp0Oi2id6orhNaanv": {
+    title: "Mixing and Mastering Engineer",
+    text: " ",
+  },
+  "1p4Atpx2k6pdoHQTb4cQ8h": {
+    title: "Producer, Songwriter, Mixing and Mastering Engineer",
+    text: " ",
+  },
+  "5I90jVF2OhIFMwLZaQxxJj": {
+    title: "Producer, Songwriter, Mixing and Mastering Engineer",
+    text: " ",
+  },
+  "66jqNMffxhzq5WaS2dPcCK": {
+    title: "Producer, Songwriter, Mixing and Mastering Engineer",
+    text: " ",
   },
 };
 
@@ -146,7 +201,7 @@ export default function PlaylistPlayer() {
             (data.tracks || []).map((t) => ({
               ...t,
               preview_state: t.preview_url ? "ready" : "pending",
-            }))
+            })),
           );
 
           setActiveAlbumIndex(0);
@@ -292,7 +347,7 @@ export default function PlaylistPlayer() {
                 ...t,
                 preview_state: "none",
               };
-            })
+            }),
           );
 
           // Give UI/network breathing room

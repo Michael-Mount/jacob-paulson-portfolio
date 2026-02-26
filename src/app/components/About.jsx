@@ -24,7 +24,7 @@ export default function About() {
             start: "top 75%",
             once: true,
           },
-        }
+        },
       );
 
       gsap.fromTo(
@@ -37,7 +37,7 @@ export default function About() {
           delay: 0.1,
           ease: "power2.out",
           scrollTrigger: { trigger: sectionRef.current, start: "top 75%" },
-        }
+        },
       );
 
       requestAnimationFrame(() => ScrollTrigger.refresh());
@@ -71,18 +71,18 @@ export default function About() {
             {/* Divider: top on mobile, left on desktop */}
             <div className="border-t border-secondary/30 pt-8 lg:border-t-0 lg:border-l lg:pl-10 lg:pt-0">
               <p className="font-league text-secondary/80 text-lg leading-relaxed max-w-prose">
-                Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque
-                faucibus ex sapien vitae pellentesque sem placerat. In id cursus
-                mi pretium tellus duis convallis. Tempus leo eu aenean sed diam
-                urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum
-                egestas. Iaculis massa nisl malesuada lacinia integer nunc
-                posuere. Ut hendrerit semper vel class aptent taciti sociosqu.
-                <br />
-                <br />
-                Ad litora torquent per conubia nostra inceptos himenaeos. Lorem
-                ipsum dolor sit amet consectetur adipiscing elit. Quisque
-                faucibus ex sapien vitae pellentesque sem placerat. In id cursus
-                mi pretium tellus duis convallis.
+                Born in Denver, Colorado into a family of 6 who were all
+                obsessed with music, I grew up listening to anything and
+                everything. My parents made sure to share their music tastes
+                with me growing up and my brothers shared their love for video
+                games. When I was 8 years old I played Nintendo’s Legend of
+                Zelda: Ocarina of time and instantly fell in love with the score
+                and audio in that game. Ever since then I have strived through
+                indie game development and music production to try and recreate
+                that magic I felt as a kid. I continue to keep that feeling in
+                mind as I put forward industry quality mixes and creative sound
+                design for video games. It’s an incredibly important thing to me
+                to help artists achieve their vision for their music or game.
               </p>
             </div>
           </div>

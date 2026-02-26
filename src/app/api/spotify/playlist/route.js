@@ -9,7 +9,6 @@ let cachedTokenExpiresAt = 0;
 const PLAYLIST_ID = "6ae6o6YL70bK2smWHo8TNr";
 const MARKET = "US";
 
-// NOTE: We no longer hard-code LIMIT here because we support progressive loading via ?limit=&offset=
 const DEFAULT_LIMIT = 15;
 
 const PREVIEW_OVERRIDE = {
@@ -81,7 +80,7 @@ async function getPlaylistMeta(token, playlistId, market) {
   url.searchParams.set("market", market);
   url.searchParams.set("fields", "id,name,images,external_urls.spotify");
   console.log("Got data");
-  return spotifyGet(token, url.toString()); //url.toString converts obj to string
+  return spotifyGet(token, url.toString());
 }
 
 //gets tracks in playlist
@@ -90,10 +89,10 @@ async function getPlaylistItems(
   playlistId,
   market,
   limit = 45,
-  offset = 0
+  offset = 0,
 ) {
   const url = new URL(
-    `https://api.spotify.com/v1/playlists/${playlistId}/tracks`
+    `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
   );
   url.searchParams.set("market", market);
   url.searchParams.set("limit", String(limit));
@@ -102,7 +101,7 @@ async function getPlaylistItems(
 
   url.searchParams.set(
     "fields",
-    "items(track(id,name,preview_url,duration_ms,explicit,external_urls.spotify,artists(id,name),album(id,name,images,external_urls.spotify))),total"
+    "items(track(id,name,preview_url,duration_ms,explicit,external_urls.spotify,artists(id,name),album(id,name,images,external_urls.spotify))),total",
   );
 
   return spotifyGet(token, url.toString());
@@ -140,7 +139,7 @@ export async function GET(req) {
 
     const limit = Math.max(
       1,
-      Math.min(50, Number(searchParams.get("limit") || DEFAULT_LIMIT))
+      Math.min(50, Number(searchParams.get("limit") || DEFAULT_LIMIT)),
     );
     const offset = Math.max(0, Number(searchParams.get("offset") || 0));
 
@@ -154,7 +153,7 @@ export async function GET(req) {
       PLAYLIST_ID,
       MARKET,
       limit,
-      offset
+      offset,
     );
 
     //Organize the Data for frontend
@@ -192,7 +191,7 @@ export async function GET(req) {
   } catch (err) {
     return NextResponse.json(
       { error: err.message || "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

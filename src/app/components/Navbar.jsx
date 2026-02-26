@@ -9,16 +9,13 @@ export default function Navbar() {
     const el = document.getElementById(id);
     if (!el) return;
 
-    // close menu first (mobile)
     setOpen(false);
 
-    // small delay so the menu can start closing before scrolling
     requestAnimationFrame(() => {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
-  // Prevent background scrolling when the mobile menu is open
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = open ? "hidden" : prev;

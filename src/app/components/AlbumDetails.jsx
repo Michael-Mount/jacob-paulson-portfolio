@@ -22,7 +22,7 @@ export default function AlbumDetails({
       gsap.fromTo(
         tracksRef.current,
         { autoAlpha: 0, y: 10 },
-        { autoAlpha: 1, y: 0, duration: 0.35, ease: "power2.out" }
+        { autoAlpha: 1, y: 0, duration: 0.35, ease: "power2.out" },
       );
 
       gsap.fromTo(
@@ -35,13 +35,13 @@ export default function AlbumDetails({
           ease: "power2.out",
           stagger: 0.03,
           delay: 0.05,
-        }
+        },
       );
 
       gsap.fromTo(
         notesRef.current,
         { autoAlpha: 0, y: 10 },
-        { autoAlpha: 1, y: 0, duration: 0.35, ease: "power2.out", delay: 0.08 }
+        { autoAlpha: 1, y: 0, duration: 0.35, ease: "power2.out", delay: 0.08 },
       );
     });
 
@@ -85,7 +85,6 @@ export default function AlbumDetails({
                         {t.artists?.map((a) => a.name).join(", ")}
                       </p>
 
-                      {/* ✅ Progressive status */}
                       {t.preview_state === "pending" && (
                         <p className="text-xs text-amber-200/80 mt-2">
                           Finding preview…

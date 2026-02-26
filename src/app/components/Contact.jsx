@@ -14,10 +14,10 @@ export default function Contact() {
           </p>
 
           <a
-            href="mailto:youremail@example.com"
+            href="mailto:jacobryanpaulson@gmail.com"
             className="mt-6 inline-flex w-fit items-center rounded-2xl border border-secondary/20 bg-secondary/5 px-5 py-3 text-secondary font-semibold hover:bg-secondary/10 transition"
           >
-            youremail@example.com
+            jacobryanpaulson@gmail.com
           </a>
         </div>
       </div>
