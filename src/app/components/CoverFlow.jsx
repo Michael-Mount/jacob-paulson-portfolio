@@ -17,7 +17,13 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
   const isProgrammaticRef = useRef(false);
   const snapCooldownUntilRef = useRef(0);
 
-  // ✅ Size knobs
+  // Drag state
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartScrollLeftRef = useRef(0);
+  const dragMovedRef = useRef(false);
+
+  // Size knobs
   const COVER_SIZE = 300;
   const GAP = 12;
 
@@ -32,10 +38,6 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     return Array.from(scroller.querySelectorAll("[data-cover-item]"));
   };
 
-  /**
-   * CoverFlow transforms based on distance from scroller center
-   * Uses offsetLeft math (stable) vs per-item getBoundingClientRect (can jitter during scroll)
-   */
   const applyCoverFlow = () => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -53,7 +55,6 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
       const x = Math.max(-1.2, Math.min(1.2, dist));
       const abs = Math.abs(x);
 
-      // Visual knobs
       const rotateY = x * -45;
       const z = (1 - abs) * 240;
       const scale = 1 - abs * 0.28;
@@ -106,7 +107,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     const scrollerCenter = scroller.scrollLeft + scroller.clientWidth / 2;
     const itemCenter = item.offsetLeft + item.offsetWidth / 2;
 
-    return itemCenter - scrollerCenter; // + means item is to the right
+    return itemCenter - scrollerCenter;
   };
 
   const animateToIndex = (index) => {
@@ -122,7 +123,6 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     const maxScroll = scroller.scrollWidth - scroller.clientWidth;
     const clamped = Math.max(0, Math.min(maxScroll, target));
 
-    // ✅ Bail if we're already basically there (prevents micro-jitter loops)
     if (Math.abs(scroller.scrollLeft - clamped) < 1) {
       applyCoverFlow();
       return;
@@ -130,7 +130,6 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
 
     isProgrammaticRef.current = true;
 
-    // ✅ Recommended: let GSAP be the snap system (avoid native snap fighting tween)
     const prevSnap = scroller.style.scrollSnapType;
     scroller.style.scrollSnapType = "none";
 
@@ -144,15 +143,13 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
         scroller.style.scrollSnapType = prevSnap;
         isProgrammaticRef.current = false;
 
-        // ✅ Cooldown so momentum / native settling doesn't cause immediate re-snap loops
         snapCooldownUntilRef.current = performance.now() + 200;
-
         applyCoverFlow();
       },
     });
   };
 
-  // Scroll listener
+  // Scroll listener (also handles drag because drag updates scrollLeft)
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -176,16 +173,12 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
         const nearest = findNearestIndex();
         const dist = distanceFromCenterPx(nearest);
 
-        // If the user scrolled to a different item, update state
         if (nearest !== activeIndexRef.current) {
           onSelectRef.current(nearest);
           return;
         }
 
-        // ✅ Only snap if we're meaningfully off center
-        if (Math.abs(dist) > 2) {
-          animateToIndex(nearest);
-        }
+        if (Math.abs(dist) > 2) animateToIndex(nearest);
       }, 140);
     };
 
@@ -196,17 +189,15 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [albums.length]);
 
   // Re-center when parent changes activeIndex
   useEffect(() => {
     if (!albums.length) return;
     animateToIndex(activeIndex);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, albums.length]);
 
-  // ✅ Handle prod-only layout shifts (image decode, font load, container resize)
+  // Handle prod-only layout shifts
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -221,12 +212,66 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
 
     ro.observe(scroller);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const DRAG_THRESHOLD_PX = 6;
+
+    const onPointerDown = (e) => {
+      // left mouse only (for mouse pointers)
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (isProgrammaticRef.current) return;
+
+      isDraggingRef.current = true;
+      dragMovedRef.current = false;
+
+      dragStartXRef.current = e.clientX;
+      dragStartScrollLeftRef.current = scroller.scrollLeft;
+
+      // capture pointer so we keep receiving move events
+      scroller.setPointerCapture?.(e.pointerId);
+
+      scroller.style.cursor = "grabbing";
+    };
+
+    const onPointerMove = (e) => {
+      if (!isDraggingRef.current) return;
+
+      const dx = e.clientX - dragStartXRef.current;
+      if (Math.abs(dx) > DRAG_THRESHOLD_PX) dragMovedRef.current = true;
+
+      scroller.scrollLeft = dragStartScrollLeftRef.current - dx;
+    };
+
+    const endDrag = () => {
+      if (!isDraggingRef.current) return;
+      isDraggingRef.current = false;
+
+      scroller.style.cursor = "";
+
+      snapCooldownUntilRef.current = performance.now() + 0; // no special delay needed here
+    };
+
+    scroller.addEventListener("pointerdown", onPointerDown);
+    scroller.addEventListener("pointermove", onPointerMove);
+    scroller.addEventListener("pointerup", endDrag);
+    scroller.addEventListener("pointercancel", endDrag);
+    scroller.addEventListener("pointerleave", endDrag);
+
+    return () => {
+      scroller.removeEventListener("pointerdown", onPointerDown);
+      scroller.removeEventListener("pointermove", onPointerMove);
+      scroller.removeEventListener("pointerup", endDrag);
+      scroller.removeEventListener("pointercancel", endDrag);
+      scroller.removeEventListener("pointerleave", endDrag);
+    };
   }, []);
 
   return (
     <div className="relative w-full">
-      {/* Stage gradients */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-x-0 top-0 h-24 " />
         <div className="absolute inset-x-0 bottom-0 h-72" />
@@ -240,12 +285,21 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
           flex items-center gap-16
           overflow-x-auto overflow-y-hidden
           px-[45vw] py-44
+          select-none
         "
         style={{
           WebkitOverflowScrolling: "touch",
           perspective: "1100px",
-          // ✅ keep native snap OFF (GSAP is snap system)
           scrollSnapType: "none",
+          cursor: "grab",
+          touchAction: "pan-y", // allows vertical page scroll; we handle horizontal drag
+        }}
+        onClickCapture={(e) => {
+          if (dragMovedRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            dragMovedRef.current = false;
+          }
         }}
       >
         {albums.map((album, i) => (
@@ -260,14 +314,13 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
               onClick={() => onSelect(i)}
               className="focus:outline-none text-secondary"
               aria-label={`Select album ${album.name}`}
+              // Prevent image drag ghosting on some browsers
+              onDragStart={(e) => e.preventDefault()}
             >
               <div className="relative text-secondary">
                 <div
                   className="rounded-2xl overflow-hidden shadow-2xl border border-white/10"
-                  style={{
-                    width: COVER_SIZE,
-                    height: COVER_SIZE,
-                  }}
+                  style={{ width: COVER_SIZE, height: COVER_SIZE }}
                 >
                   <img
                     src={album.coverUrl}
@@ -275,7 +328,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
                     draggable={false}
                     loading="lazy"
                     decoding="async"
-                    className="object-cover w-full h-full"
+                    className="object-cover w-full h-full pointer-events-none"
                   />
                 </div>
               </div>
