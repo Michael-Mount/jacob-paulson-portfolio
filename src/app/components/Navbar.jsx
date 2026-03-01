@@ -9,23 +9,30 @@ export default function Navbar() {
     const el = document.getElementById(id);
     if (!el) return;
 
+    // Close menu first
     setOpen(false);
 
     requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     });
   };
 
+  // Lock body scroll only while menu is open
   useEffect(() => {
+    if (!open) return;
+
     const prev = document.body.style.overflow;
-    document.body.style.overflow = open ? "hidden" : prev;
+    document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = prev;
     };
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-50 bg-background ">
+    <header className="sticky top-0 z-50 bg-background">
       <nav className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
         {/* Logo */}
         <button
@@ -60,7 +67,6 @@ export default function Navbar() {
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
         >
-          {/* Simple icon (no libs) */}
           <span className="sr-only">{open ? "Close" : "Menu"}</span>
           <div className="flex flex-col gap-1">
             <span
@@ -84,7 +90,7 @@ export default function Navbar() {
 
       {/* Mobile dropdown panel */}
       <div
-        className={`md:hidden overflow-hidden border-t border-white/10 bg-background duration-300 ${
+        className={`md:hidden relative z-[60] overflow-hidden border-t border-white/10 bg-background transition-[max-height,opacity] duration-300 ${
           open ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
@@ -106,11 +112,10 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Tap-to-close backdrop (mobile) */}
       {open && (
         <button
           type="button"
-          className="md:hidden fixed inset-0 top-[72px] bg-black/40"
+          className="md:hidden fixed inset-0 top-[72px] z-[55] bg-black/40"
           onClick={() => setOpen(false)}
           aria-label="Close menu backdrop"
         />
