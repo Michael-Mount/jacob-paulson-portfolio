@@ -17,7 +17,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
   const isProgrammaticRef = useRef(false);
   const snapCooldownUntilRef = useRef(0);
 
-  // Drag state
+  // Drag state (desktop-only)
   const isDraggingRef = useRef(false);
   const dragStartXRef = useRef(0);
   const dragStartScrollLeftRef = useRef(0);
@@ -25,7 +25,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
 
   // Size knobs
   const COVER_SIZE = 300;
-  const GAP = 12;
+  const GAP = 12; // kept in case you use it elsewhere (not used directly below)
 
   useEffect(() => {
     activeIndexRef.current = activeIndex;
@@ -149,7 +149,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     });
   };
 
-  // Scroll listener (also handles drag because drag updates scrollLeft)
+  // Scroll listener (native touch scrolling + desktop wheel/trackpad scrolling)
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -214,6 +214,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     return () => ro.disconnect();
   }, []);
 
+  // Desktop-only drag-to-scroll (touch uses native horizontal swipe scrolling)
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -221,6 +222,9 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     const DRAG_THRESHOLD_PX = 6;
 
     const onPointerDown = (e) => {
+      // IMPORTANT: let mobile browsers do native swipe scrolling
+      if (e.pointerType === "touch") return;
+
       // left mouse only (for mouse pointers)
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (isProgrammaticRef.current) return;
@@ -238,6 +242,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     };
 
     const onPointerMove = (e) => {
+      if (e.pointerType === "touch") return;
       if (!isDraggingRef.current) return;
 
       const dx = e.clientX - dragStartXRef.current;
@@ -252,7 +257,8 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
 
       scroller.style.cursor = "";
 
-      snapCooldownUntilRef.current = performance.now() + 0; // no special delay needed here
+      // no special delay needed here
+      snapCooldownUntilRef.current = performance.now();
     };
 
     scroller.addEventListener("pointerdown", onPointerDown);
@@ -273,7 +279,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
   return (
     <div className="relative w-full">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-x-0 top-0 h-24 " />
+        <div className="absolute inset-x-0 top-0 h-24" />
         <div className="absolute inset-x-0 bottom-0 h-72" />
       </div>
 
@@ -292,9 +298,14 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
           perspective: "1100px",
           scrollSnapType: "none",
           cursor: "grab",
-          touchAction: "pan-y", // allows vertical page scroll; we handle horizontal drag
+
+          // KEY CHANGE:
+          // Allow native horizontal panning on touch devices.
+          // We do NOT hijack touch dragging with pointermove; mobile gets native swipe scrolling.
+          touchAction: "pan-x",
         }}
         onClickCapture={(e) => {
+          // Prevent accidental "click select" after a desktop drag
           if (dragMovedRef.current) {
             e.preventDefault();
             e.stopPropagation();
@@ -314,7 +325,6 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
               onClick={() => onSelect(i)}
               className="focus:outline-none text-secondary"
               aria-label={`Select album ${album.name}`}
-              // Prevent image drag ghosting on some browsers
               onDragStart={(e) => e.preventDefault()}
             >
               <div className="relative text-secondary">
