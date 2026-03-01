@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import gsap from "gsap";
 
 export default function CoverFlow({ albums, activeIndex, onSelect }) {
   const scrollerRef = useRef(null);
 
-  // Keep latest props in refs (prevents stale closure bugs)
+  // Keep latest props
   const activeIndexRef = useRef(activeIndex);
   const onSelectRef = useRef(onSelect);
 
-  // Scroll + animation control
   const rafRef = useRef(0);
   const scrollEndTimerRef = useRef(null);
 
@@ -24,13 +23,21 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
   const dragMovedRef = useRef(false);
 
   // Size knobs
-  const COVER_SIZE = 300;
-  const GAP = 12; // kept in case you use it elsewhere (not used directly below)
+  const COVER_SIZE = 250;
 
   useEffect(() => {
     activeIndexRef.current = activeIndex;
     onSelectRef.current = onSelect;
   }, [activeIndex, onSelect]);
+
+  const spacerStyle = useMemo(
+    () => ({
+      width: `calc(50vw - ${COVER_SIZE / 2}px)`,
+      flex: "0 0 auto",
+      pointerEvents: "none",
+    }),
+    [COVER_SIZE],
+  );
 
   const getItems = () => {
     const scroller = scrollerRef.current;
@@ -48,25 +55,18 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
 
     items.forEach((item) => {
       const itemCenter = item.offsetLeft + item.offsetWidth / 2;
-
       const distPx = itemCenter - scrollerCenter;
       const dist = distPx / halfWidth;
 
       const x = Math.max(-1.2, Math.min(1.2, dist));
       const abs = Math.abs(x);
 
-      const rotateY = x * -45;
-      const z = (1 - abs) * 240;
-      const scale = 1 - abs * 0.28;
-      const opacity = 1 - abs * 0.55;
-      const zIndex = Math.round((1 - abs) * 100);
-
       gsap.set(item, {
-        rotateY,
-        z,
-        scale,
-        opacity,
-        zIndex,
+        rotateY: x * -45,
+        z: (1 - abs) * 240,
+        scale: 1 - abs * 0.28,
+        opacity: 1 - abs * 0.55,
+        zIndex: Math.round((1 - abs) * 100),
         transformPerspective: 1100,
         transformOrigin: "50% 50%",
       });
@@ -142,14 +142,13 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
       onComplete: () => {
         scroller.style.scrollSnapType = prevSnap;
         isProgrammaticRef.current = false;
-
         snapCooldownUntilRef.current = performance.now() + 200;
         applyCoverFlow();
       },
     });
   };
 
-  // Scroll listener (native touch scrolling + desktop wheel/trackpad scrolling)
+  // Scroll listener
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -197,7 +196,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     animateToIndex(activeIndex);
   }, [activeIndex, albums.length]);
 
-  // Handle prod-only layout shifts
+  // Handle layout shifts
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -214,7 +213,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     return () => ro.disconnect();
   }, []);
 
-  // Desktop-only drag-to-scroll (touch uses native horizontal swipe scrolling)
+  // Desktop-only drag-to-scroll
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -222,10 +221,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     const DRAG_THRESHOLD_PX = 6;
 
     const onPointerDown = (e) => {
-      // IMPORTANT: let mobile browsers do native swipe scrolling
       if (e.pointerType === "touch") return;
-
-      // left mouse only (for mouse pointers)
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (isProgrammaticRef.current) return;
 
@@ -235,9 +231,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
       dragStartXRef.current = e.clientX;
       dragStartScrollLeftRef.current = scroller.scrollLeft;
 
-      // capture pointer so we keep receiving move events
       scroller.setPointerCapture?.(e.pointerId);
-
       scroller.style.cursor = "grabbing";
     };
 
@@ -254,10 +248,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
     const endDrag = () => {
       if (!isDraggingRef.current) return;
       isDraggingRef.current = false;
-
       scroller.style.cursor = "";
-
-      // no special delay needed here
       snapCooldownUntilRef.current = performance.now();
     };
 
@@ -290,7 +281,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
           relative
           flex items-center gap-16
           overflow-x-auto overflow-y-hidden
-          px-[45vw] py-44
+          py-44
           select-none
         "
         style={{
@@ -298,14 +289,9 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
           perspective: "1100px",
           scrollSnapType: "none",
           cursor: "grab",
-
-          // KEY CHANGE:
-          // Allow native horizontal panning on touch devices.
-          // We do NOT hijack touch dragging with pointermove; mobile gets native swipe scrolling.
           touchAction: "pan-x",
         }}
         onClickCapture={(e) => {
-          // Prevent accidental "click select" after a desktop drag
           if (dragMovedRef.current) {
             e.preventDefault();
             e.stopPropagation();
@@ -313,6 +299,8 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
           }
         }}
       >
+        <li aria-hidden="true" style={spacerStyle} />
+
         {albums.map((album, i) => (
           <li
             key={album.id}
@@ -352,6 +340,8 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
             </button>
           </li>
         ))}
+
+        <li aria-hidden="true" style={spacerStyle} />
       </ul>
     </div>
   );
