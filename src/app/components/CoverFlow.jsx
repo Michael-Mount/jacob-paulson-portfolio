@@ -268,7 +268,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
   }, []);
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full ">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-x-0 top-0 h-24" />
         <div className="absolute inset-x-0 bottom-0 h-72" />
@@ -283,6 +283,7 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
           overflow-x-auto overflow-y-hidden
           py-44
           select-none
+          
         "
         style={{
           WebkitOverflowScrolling: "touch",
@@ -317,8 +318,8 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
             >
               <div className="relative text-secondary">
                 <div
-                  className="rounded-2xl overflow-hidden shadow-2xl border border-white/10"
-                  style={{ width: COVER_SIZE, height: COVER_SIZE }}
+                  className="rounded-2xl overflow-hidden shadow-2xl border border-white/10 w-50 md:w-62.5 xl:w-75 h-50 md:h-62.5 xl:h-75"
+                  // style={{ width: COVER_SIZE, height: COVER_SIZE }}
                 >
                   <img
                     src={album.coverUrl}
@@ -332,8 +333,8 @@ export default function CoverFlow({ albums, activeIndex, onSelect }) {
               </div>
 
               <p
-                className="mt-4 text-center text-sm text-secondary truncate mx-auto"
-                style={{ maxWidth: COVER_SIZE }}
+                className="mt-4 text-center text-xs text-secondary truncate mx-auto"
+                // style={{ maxWidth: COVER_SIZE }}
               >
                 {album.name}
               </p>

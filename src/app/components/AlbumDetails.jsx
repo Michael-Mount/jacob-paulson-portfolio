@@ -49,7 +49,7 @@ export default function AlbumDetails({
   }, [album?.id]);
 
   return (
-    <section className="mt-10 max-w-6xl mx-auto">
+    <section className="-mt-20 md:mt-0 max-w-6xl mx-auto">
       {/* Outer Container */}
       <div className="rounded-3xl border border-white/10 bg-white/15 backdrop-blur-md overflow-hidden">
         {/* Header Row */}
