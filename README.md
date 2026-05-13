@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Jacob Paulson Portfolio
 
-## Getting Started
+A modern, responsive portfolio website built to showcase music projects created by producer Jacob Paulson. The site uses the Spotify API to let users explore and listen to music directly from a Spotify playlist.
 
-First, run the development server:
+## Live Demo
+
+[View Live Site](https://jacobpaulson.music/)
+
+## Overview
+
+**Jacob Paulson Portfolio** is a Next.js web application designed for a music producer portfolio. The site presents Jacob Paulson’s music work in a polished, interactive, and user-friendly format.
+
+The project focuses on combining clean visual design with music playback functionality through the Spotify API, giving visitors a simple way to discover and listen to the producer’s work.
+
+## Features
+
+- Responsive design for desktop, tablet, and mobile
+- Mobile-friendly layout and navigation
+- Interactive user experience
+- Spotify API integration
+- Music playlist display and listening experience
+- Contact section
+- Portfolio/project showcase
+- Smooth animations powered by GSAP
+- Clean styling with Tailwind CSS
+
+## Tech Stack
+
+- **Next.js** – React framework for building the web application
+- **Tailwind CSS** – Utility-first CSS framework for responsive styling
+- **GSAP** – Animation library for smooth frontend interactions
+- **Spotify API** – Used to connect playlist/music data and allow users to listen to Jacob Paulson’s music
+
+## Installation
+
+To run this project locally, clone the repository and install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open the project in your browser:
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```bash
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Goals
 
-## Learn More
+The goal of this project was to create a professional music portfolio that highlights Jacob Paulson’s production work while making the listening experience simple and interactive for visitors.
 
-To learn more about Next.js, take a look at the following resources:
+The project was built with a focus on:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Clean visual presentation
+- Responsive design
+- Easy music discovery
+- Spotify-powered playlist functionality
+- Smooth animation and interaction
+- A polished portfolio experience for a music producer
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Screenshots
 
-## Deploy on Vercel
+### Homepage Section
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+![Homepage Screenshot](./public/images/hompage.png)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Cover Flow Section
+
+![Cover Flow Screenshot](./public/images/cover-flow.png)
+
+### Song Details Section
+
+![Song Details Screenshot](./public/images/song-section.png)
+
+## What I Learned
+
+While building this project, I practiced creating a polished frontend experience with Next.js, Tailwind CSS, and GSAP while also integrating the Spotify API. This helped strengthen my ability to connect a frontend interface with external API data and build a more interactive user experience.
+
+## Future Improvements
+
+- Add more detailed project or track descriptions
+- Improve Spotify playlist controls and UI
+- Add loading states for Spotify API data
+- Add more animation polish
+- Add a CMS or structured data file for easier portfolio updates
+- Expand the music showcase with additional playlists or featured tracks
+
+## Author
+
+Built by **Michael Mount**

@@ -9,7 +9,6 @@ export default function Navbar() {
     const el = document.getElementById(id);
     if (!el) return;
 
-    // Close menu first
     setOpen(false);
 
     requestAnimationFrame(() => {
@@ -19,7 +18,6 @@ export default function Navbar() {
     });
   };
 
-  // Lock body scroll only while menu is open
   useEffect(() => {
     if (!open) return;
 
