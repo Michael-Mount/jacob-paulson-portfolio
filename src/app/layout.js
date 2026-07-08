@@ -15,7 +15,7 @@ const leagueSpartan = League_Spartan({
 export const metadata = {
   title: "Jacob Paulson",
   description:
-    "Jacob Paulsons audio engineering portfolio website. This site is designed to house the latest works from Jacob Paulson as an audio engineer and to highlight his strengths as well as a place for clients to get in contact with him.",
+    "Jacob Paulson's audio engineering portfolio website. This site is designed to house the latest works from Jacob Paulson as an audio engineer and to highlight his strengths as well as a place for clients to get in contact with him.",
 };
 
 export default function RootLayout({ children }) {
